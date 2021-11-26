@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+    <head>
+      <meta charset="utf-8">
+      <title>My Experiment</title>
+      <link href="jspsych-6.3.1/css/jspsych.css" rel="stylesheet" type="text/css">
+      <script src="gaborgen-js-gh-pages/numeric.min.js"></script>
+      <script src="gaborgen-js-gh-pages/jquery-min.js" type="text/javascript"></script>
+      <script src="gaborgen-js-gh-pages/jquery-ui.min.js"></script>
+      <script src="gaborgen-js-gh-pages/gab.js"></script>
+      <script src="jspsych-6.3.1/jspsych.js"></script>
+      <script src="FileSaver.js"></script>
+      <script src="jspsych-6.3.1/plugins/jspsych-html-keyboard-response.js"></script>
+      <script src="jspsych-6.3.1/plugins/jspsych-image-keyboard-response.js"></script>
+      <script src="jspsych-6.3.1/plugins/jspsych-survey-text.js"></script>
+      <script src="jspsych-6.3.1/plugins/jspsych-categorize-html-space.js"></script>
+      <script src="jspsych-6.3.1/plugins/jspsych-categorize-html.js"></script>
+    </head>
+    <body style="background-color: #7F7F7F; color: white;">
+      
+    </body>
+
+    <script>
+
+    /* create timeline */
+    var timeline = [];
+    var screenLength;
+    var screenH;
+    var screenW;
+    var pixNeed;
+    var sizeStr;
+
+    /* collect info trial */
+    var survey_trial = {
+    type: 'survey-text',
+    questions: [
+    {prompt: "Participant name:", name: 'participant', required: true}, 
+    {prompt: "Session:", name: 'session'},
+    {prompt: "Monitor Diagonal Length in inches:", name: 'length1', required: true},
+    {prompt: "Monitor Resolution X:", name: 'resX', required: true},
+    {prompt: "Monitor Resolution Y:", name: 'resY', required: true}
+    ],
+    data: {
+        task: 'survey_trial'
+      },
+      
+      on_finish: function(){
+        screenLength = parseFloat(extractSubstring(jsPsych.data.get().filter({task: 'survey_trial'}).ignore(["rt","task","trial_type","trial_index","time_elapsed","internal_node_id"]).json(), "length1\":\"", "\",\"resX"));
+    screenH = parseFloat(extractSubstring(jsPsych.data.get().filter({task: 'survey_trial'}).ignore(["rt","task","trial_type","trial_index","time_elapsed","internal_node_id"]).json(), "resY\":\"", "\"}}]"));
+    screenW = parseFloat(extractSubstring(jsPsych.data.get().filter({task: 'survey_trial'}).ignore(["rt","task","trial_type","trial_index","time_elapsed","internal_node_id"]).json(), "resX\":\"", "\",\"resY"));
+    pixNeed = Math.round((1.878 * Math.sqrt((screenH*screenH)+(screenW*screenW))) / (screenLength*2));
+    pixNeed = Math.round(pixNeed*1.5);
+    sizeStr = "width:"+pixNeed.toString()+"px; height:"+pixNeed.toString()+"px; ";
+      }
+    };
+    timeline.push(survey_trial);
+
+    function extractSubstring(str, left, right){
+      return str.substring(str.indexOf(left) + left.length, str.indexOf(right));
+    }
+
+    /* define welcome message 1 trial */
+    var welcome1 = {
+      type: "html-keyboard-response",
+      stimulus: "Welcome!<br>Please compare the orientation of two gratings.<br>If the second one was tilted to the left of the first one's orientation, press “F”.<br>If the second one was tilted to the right of the first one's orientation, press “J”.<br>You are first going to do some practice trials.<br>Press spacebar to continue.",
+      choices: [' '],
+    };
+    timeline.push(welcome1);
+
+    function getRandomIntAsStr(max) {
+      return (Math.floor((Math.random()-0.5) * max)).toString();
+    }
+
+    function cmToPixels(cm){
+      return (Math.round( (cm * Math.sqrt((screenH*screenH)+(screenW*screenW))) / (screenLength * 2.54) ));
+    }
+
+    var xOffset;
+    var yOffset;
+    var baseWhere;
+    var leftMirrorStr;
+    var rightMirrorStr;
+    var mirrorWhere;
+    var xShift;
+    var yShift;
+    function setXOffsets(val, turn) {
+      if (turn == "new") {
+      xOffset = getRandomIntAsStr(val);
+      }
+      return xOffset;
+    }
+    function setYOffsets(val, turn) {
+      if (turn == "new") {
+      yOffset = getRandomIntAsStr(val);
+      }
+      return yOffset;
+    }
+
+    function leftOrRight(turn) {
+      if (turn == "new") {
+        if (Math.random() < 0.5) {
+          baseWhere = "left";
+        }
+        else {
+          baseWhere = "right";
+        }
+      }
+      return baseWhere;
+    }
+
+    var quadrants = [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4];
+    var startIndex = 0;
+    function shuffle(array) {
+      var currentIndex = array.length,  randomIndex;
+
+      // While there remain elements to shuffle...
+      while (currentIndex != 0) {
+
+        // Pick a remaining element...
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+
+        // And swap it with the current element.
+        [array[currentIndex], array[randomIndex]] = [
+          array[randomIndex], array[currentIndex]];
+      }
+
+      return array;
+    }
+
+    function getQuadrantX(firstTime, turn) {
+      if (firstTime == "yes") {
+        shuffle(quadrants);
+        startIndex = 0;
+      }
+      if (turn == "new") {
+        if (quadrants[startIndex] == 1 || quadrants[startIndex] == 3) {
+          xShift = Math.round(cmToPixels(2.5));
+        }
+        else {
+          xShift = -1*Math.round(cmToPixels(2.5));
+        }
+      }
+      return xShift;
+    }
+
+    function getQuadrantY(turn) {
+      if (turn == "new") {
+        if (quadrants[startIndex] == 1 || quadrants[startIndex] == 2) {
+          yShift = Math.round(cmToPixels(2.5));
+        }
+        else {
+          yShift = -1*Math.round(cmToPixels(2.5));
+        }
+        startIndex = startIndex + 1;
+      }
+      return yShift;
+    }
+
+    function decideMirror() {
+    if (Math.random() < 0.5) {
+        mirrorWhere = "left";
+        leftMirrorStr = " transform: scale(-1, -1);";
+        rightMirrorStr = ""
+      }
+      else {
+        mirrorWhere = "right";
+        rightMirrorStr = " transform: scale(-1, -1);";
+        leftMirrorStr = ""
+      }
+      return mirrorWhere;
+    }
+
+    /* test trials */
+    var test_stimuli = [
+    { tiltBase: '7', tiltTarget: '25', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("yes", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("yes", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(25, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(25, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'f'} else {return 'j'}} },
+      { tiltBase: '7', tiltTarget: '175', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(175, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(175, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'j'} else {return 'f'}} },
+      { tiltBase: '7', tiltTarget: '22', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("yes", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("yes", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(22, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(22, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'f'} else {return 'j'}} },
+      { tiltBase: '7', tiltTarget: '172', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(172, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(172, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'j'} else {return 'f'}} },
+      { tiltBase: '7', tiltTarget: '21', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("yes", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("yes", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(21, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(21, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'f'} else {return 'j'}} },
+      { tiltBase: '7', tiltTarget: '171', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(171, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(171, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'j'} else {return 'f'}} }
+    ];
+    //'<div style="font-size:60px;">+</div>'
+    var fixation1 = {
+      type: 'html-keyboard-response',
+      stimulus: '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img />',
+      choices: jsPsych.NO_KEYS,
+      trial_duration: 500,
+      data: {
+        task: 'fixation1',
+        tiltBase: jsPsych.timelineVariable('tiltBase'),
+        tiltTarget: jsPsych.timelineVariable('tiltTarget'),
+        tiltBaseWhere: jsPsych.timelineVariable('tiltBaseWhere'),
+        sfMirrorWhere: jsPsych.timelineVariable('sfMirrorWhere')
+      }
+    }
+
+    var grating1 = {
+      type: 'html-keyboard-response',
+      stimulus: jsPsych.timelineVariable('stimulusBase'),
+      choices: jsPsych.NO_KEYS,
+      trial_duration: 500,
+      data: {
+        task: 'grating1'
+      }
+    }
+
+    var grating12 = {
+      type: 'html-keyboard-response',
+      stimulus: jsPsych.timelineVariable('stimulusTarget'),
+      choices: jsPsych.NO_KEYS,
+      trial_duration: 500,
+      data: {
+        task: 'grating12'
+      }
+    }
+
+    var test = {
+      type: "categorize-html-space",
+      stimulus: "F: the second one is tilted to the left of the first one's orientation.<br>J: the second one is tilted to the right of the first one's orientation.",
+      choices: ['f', 'j'],
+      key_answer: jsPsych.timelineVariable('correct_response'),
+      feedback_answer: ' ',
+      correct_text: "Correct!<br>Press space to continue.",
+      incorrect_text: "Incorrect.<br>Press space to continue.",
+      force_correct_button_press: true,
+      show_stim_with_feedback: false,
+      data: {
+        task: 'response1',
+        correct_response: jsPsych.timelineVariable('correct_response')
+      },
+      on_finish: function(data){
+        data.correct = jsPsych.pluginAPI.compareKeys(data.response, data.correct_response);
+      }
+    }
+
+    var test_procedure = {
+      timeline: [fixation1, grating1, grating12, test],
+      timeline_variables: test_stimuli,
+      repetitions: 1,
+      randomize_order: true,
+      sample: {
+        type: 'fixed-repetitions',
+        size: 2
+    }
+    }
+    timeline.push(test_procedure);
+
+    /* transition trial */
+    var transition = {
+      type: "html-keyboard-response",
+      stimulus: "Now, you are going to do the experimental trials.<br>Reminder:<br>Please compare the orientation of two gratings.<br>If the second one was tilted to the left of the first one's orientation, press “F”.<br>If the second one was tilted to the right of the first one's orientation, press “J”.<br>Press spacebar to continue.",
+      choices: [' '],
+    };
+    timeline.push(transition);
+
+    
+    /* experiment trials */
+    var test_stimuli2 = [
+      {  tiltBase: '7', tiltTarget: '17', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("yes", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("yes", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(17, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(17, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'f'} else {return 'j'}}},
+      {  tiltBase: '7', tiltTarget: '177', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(177, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(177, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'j'} else {return 'f'}}},
+      {  tiltBase: '7', tiltTarget: '16', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(16, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(16, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'f'} else {return 'j'}}},
+      {  tiltBase: '7', tiltTarget: '178', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(178, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(178, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'j'} else {return 'f'}}},
+      {  tiltBase: '7', tiltTarget: '18', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(18, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(18, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'f'} else {return 'j'}}},
+      {  tiltBase: '7', tiltTarget: '176', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(176, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(176, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'j'} else {return 'f'}}},
+      {  tiltBase: '7', tiltTarget: '15', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(15, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(15, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'f'} else {return 'j'}}},
+      {  tiltBase: '7', tiltTarget: '179', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(179, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(179, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'j'} else {return 'f'}}},
+      {  tiltBase: '7', tiltTarget: '15.5', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(15.5, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(15.5, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'f'} else {return 'j'}}},
+      {  tiltBase: '7', tiltTarget: '178.5', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(178.5, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(178.5, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'j'} else {return 'f'}}},
+      {  tiltBase: '7', tiltTarget: '14', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(14, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(14, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'f'} else {return 'j'}}},
+      {  tiltBase: '7', tiltTarget: '179', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(179, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(179, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'j'} else {return 'f'}}},
+      {  tiltBase: '7', tiltTarget: '13', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(13, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(13, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'f'} else {return 'j'}}},
+      {  tiltBase: '7', tiltTarget: '1', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(1, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(1, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'j'} else {return 'f'}}},
+      {  tiltBase: '7', tiltTarget: '12', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(12, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(12, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'f'} else {return 'j'}}},
+      {  tiltBase: '7', tiltTarget: '2', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(2, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(2, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'j'} else {return 'f'}}},
+      {  tiltBase: '7', tiltTarget: '11', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(11, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(11, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'f'} else {return 'j'}}},
+      {  tiltBase: '7', tiltTarget: '3', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(3, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(3, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'j'} else {return 'f'}}},
+      {  tiltBase: '7', tiltTarget: '16.5', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(16.5, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(16.5, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'f'} else {return 'j'}}},
+      {  tiltBase: '7', tiltTarget: '177.5', tiltBaseWhere: function(){return leftOrRight("new")}, sfMirrorWhere: function(){return decideMirror()}, stimulusBase: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "new")+'px; top:'+getQuadrantY("new")+'px;'+leftMirrorStr+'" src="' + gaborgen(177.5, 100) + '"/>'}}, stimulusTarget: function(){if (baseWhere == "left"){return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(177.5, 100) + '"/>'} else {return '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img style = "'+sizeStr+'position:relative; left:'+getQuadrantX("no", "old")+'px; top:'+getQuadrantY("old")+'px;'+rightMirrorStr+'" src="' + gaborgen(7, 100) + '"/>'}}, correct_response: function(){if (baseWhere == "left"){return 'j'} else {return 'f'}}}
+    ];
+    
+    var fixation2 = {
+      type: 'html-keyboard-response',
+      stimulus: '<div style="font-size:60px;position:absolute; left:50%; top:50%;">+</div><img />',
+      choices: jsPsych.NO_KEYS,
+      trial_duration: 500,
+      data: {
+        task: 'fixation2',
+        tiltBase: jsPsych.timelineVariable('tiltBase'),
+        tiltTarget: jsPsych.timelineVariable('tiltTarget'),
+        tiltBaseWhere: jsPsych.timelineVariable('tiltBaseWhere'),
+        sfMirrorWhere: jsPsych.timelineVariable('sfMirrorWhere')
+      }
+    }
+
+    var grating3 = {
+      type: 'html-keyboard-response',
+      stimulus: jsPsych.timelineVariable('stimulusBase'),
+      choices: jsPsych.NO_KEYS,
+      trial_duration: 250,
+      data: {
+        task: 'grating3'
+      }
+    }
+
+    var grating32 = {
+      type: 'html-keyboard-response',
+      stimulus: jsPsych.timelineVariable('stimulusTarget'),
+      choices: jsPsych.NO_KEYS,
+      trial_duration: 250,
+      data: {
+        task: 'grating32'
+      }
+    }
+
+    var test2 = {
+      type: "categorize-html",
+      stimulus: "F: the second one is tilted to the left of the first one's orientation.<br>J: the second one is tilted to the right of the first one's orientation.",
+      choices: ['f', 'j'],
+      key_answer: jsPsych.timelineVariable('correct_response'),
+      correct_text: "Correct!",
+      incorrect_text: "Incorrect.",
+      feedback_duration: 500,
+      show_stim_with_feedback: false,
+      data: {
+        task: 'response2',
+        correct_response: jsPsych.timelineVariable('correct_response')
+      },
+      on_finish: function(data){
+        data.correct = jsPsych.pluginAPI.compareKeys(data.response, data.correct_response);
+      }
+    }
+
+    var test_procedure2 = {
+      timeline: [fixation2, grating3, grating32, test2],
+      timeline_variables: test_stimuli2,
+      repetitions: 1,
+      randomize_order: true,
+      sample: {
+        type: 'fixed-repetitions',
+        size: 2
+    }
+    }
+    timeline.push(test_procedure2);
+
+    /* exit trial */
+    var exit = {
+      type: "html-keyboard-response",
+      stimulus: "Congratulations! You have completed this task. Thank you for your participation.<br>Press enter to exit the program.",
+      choices: ['Enter'],
+    };
+    timeline.push(exit);
+
+    /* start the experiment */
+    jsPsych.init({
+      timeline: timeline,
+      on_finish: function() {
+        var subjectDetails = jsPsych.data.get().filter({task: 'survey_trial'}).ignore(["rt","task","trial_type","trial_index","time_elapsed","internal_node_id"]).csv();
+        var testConditions = jsPsych.data.get().filter({task: 'fixation1'}).ignore(["rt","stimulus","response","task","trial_type","trial_index","time_elapsed","internal_node_id"]).csv();
+        var testResponse = jsPsych.data.get().filter({task: 'response1'}).ignore(["stimulus","task","correct_response","trial_type","trial_index","time_elapsed","internal_node_id"]).csv();
+        var testConditions2 = jsPsych.data.get().filter({task: 'fixation2'}).ignore(["rt","stimulus","response","task","trial_type","trial_index","time_elapsed","internal_node_id"]).csv();
+        var testResponse2 = jsPsych.data.get().filter({task: 'response2'}).ignore(["stimulus","task","correct_response","trial_type","trial_index","time_elapsed","internal_node_id"]).csv();
+
+        //var blob = new Blob([subjectDetails, testConditions, testResponse, testConditions2, testResponse2],
+        //        { type: "text/csv;charset=utf-8" });
+            //saveAs(blob, "dataFile.csv");
+        var blob = subjectDetails+testConditions+testResponse+testConditions2+testResponse2;
+        saveData("dataFile_"+makeid(16)+".csv", blob);
+      }
+    });
+
+    function makeid(length) {
+    var result           = '';
+    var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var charactersLength = characters.length;
+    for ( var i = 0; i < length; i++ ) {
+      result += characters.charAt(Math.floor(Math.random() * 
+ charactersLength));
+   }
+   return result;
+}
+    function saveData(name, data_in){
+    var url = 'record_result.php';
+    var data_to_send = {filename: name, filedata: data_in};
+    fetch(url, {
+        method: 'POST',
+        body: JSON.stringify(data_to_send),
+        headers: new Headers({
+                'Content-Type': 'application/json'
+        })
+      });
+    }
+
+    </script>
+</html>
